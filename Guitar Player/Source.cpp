@@ -11,6 +11,7 @@
 #include "PlayerFunctionality.h"
 #include "resource.h"
 #include "VersionNum.h"
+#include "globals.h"
 
 #ifdef __WXMSW__
 #include <wx/msw/private.h>
@@ -19,6 +20,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #endif
 
+bool obstruction = true;
 
 class DarkPanel : public wxPanel {
 public:
@@ -404,10 +406,13 @@ public:
 
         searchBox = new DarkSearchBox(groupPanelSongs, wxID_ANY);
         refreshButton = new DarkButton(groupPanelSongs, wxID_ANY, "Refresh");
+        obstructionButton = new DarkButton(groupPanelSongs, wxID_ANY, "Obstruct");
 
         // Add search box and refresh button to the horizontal sizer
+        searchSizer->Add(obstructionButton, 0, wxEXPAND | wxRIGHT, 5);
         searchSizer->Add(searchBox, 1, wxEXPAND | wxRIGHT, 5);
-        searchSizer->Add(refreshButton, 0, wxEXPAND);
+        searchSizer->Add(refreshButton, 0, wxEXPAND | wxRIGHT, 5);
+        
 
         listBox = new DarkListBox(groupPanelSongs, wxID_ANY);
 
@@ -468,6 +473,7 @@ public:
         listBox->Bind(wxEVT_LISTBOX, &MainFrame::OnSongSelect, this);
         progressBar->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &MainFrame::OnSeek, this);
         refreshButton->Bind(wxEVT_BUTTON, &MainFrame::OnRefresh, this);
+        obstructionButton->Bind(wxEVT_BUTTON, &MainFrame::OnObstruction, this);
 
         // Create timer for progress updates
         progressTimer = new wxTimer(this);
@@ -483,6 +489,7 @@ public:
         timeLabel->SetFont(customFont);
         currentSongLabel->SetFont(customFont);
         refreshButton->SetFont(customFont);
+        obstructionButton->SetFont(customFont);
 
         // Bind the close event
         Bind(wxEVT_CLOSE_WINDOW, &MainFrame::OnClose, this);
@@ -499,6 +506,18 @@ public:
     void RefreshAllButtons() {
         // Refresh all buttons in the frame and its children
         RefreshButtonsInWindow(this);
+    }
+
+    void OnObstruction(wxCommandEvent& event) {
+        if (obstruction) {
+            obstruction = false;
+            WindowsUtility::showMessageBox("This is not recommended and will cause playback to be substantially lower quality.", "Warning", MB_OK | MB_ICONWARNING);
+        }
+        else {
+            obstruction = true;
+        }
+        RefreshAllButtons();
+        UpdateButtonStates();
     }
 
     void OnRefresh(wxCommandEvent& event) {
@@ -768,10 +787,15 @@ private:
             pauseButton->SetBackgroundColour(activeColor);
             playButton->SetBackgroundColour(inactiveColor);
         }
+        else if (obstruction) {
+            //If input blocking is disabled
+            obstructionButton->SetBackgroundColour(activeColor);
+        }
         else {
             // Stopped state
             playButton->SetBackgroundColour(inactiveColor);
             pauseButton->SetBackgroundColour(inactiveColor);
+            obstructionButton->SetBackgroundColour(inactiveColor);
         }
 
         stopButton->SetBackgroundColour(inactiveColor);
@@ -780,6 +804,7 @@ private:
         playButton->ForceRefresh();
         pauseButton->ForceRefresh();
         stopButton->ForceRefresh();
+        obstructionButton->ForceRefresh();
     }
 
     void OnClose(wxCloseEvent& event) {
@@ -792,6 +817,7 @@ private:
     DarkButton* pauseButton;
     DarkButton* stopButton;
     DarkButton* refreshButton;
+    DarkButton* obstructionButton;
     CustomProgressBar* progressBar;
     wxStaticText* timeLabel;
     wxTimer* progressTimer;
@@ -834,5 +860,4 @@ public:
         return true;
     }
 };
-
 wxIMPLEMENT_APP(MusicPlayerApp);

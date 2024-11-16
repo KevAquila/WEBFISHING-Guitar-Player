@@ -16,6 +16,7 @@
 #include <algorithm>
 #include "WindowsUtility.h"
 #include "InputBlocker.h"
+#include "globals.h"
 
 
 
@@ -345,7 +346,10 @@ void PlaySong(const std::filesystem::path& songPath, bool& isPlaying, bool& isPa
     double accumulatedTime = currentProgress;
     auto lastUpdateTime = std::chrono::high_resolution_clock::now();
     InputBlocker inputBlocker;
-    inputBlocker.Start(targetWindow);
+
+    if (obstruction) {
+        inputBlocker.Start(targetWindow); 
+    }
     while (isPlaying) {
         // Handle pausing
         if (isPaused) {

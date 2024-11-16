@@ -146,6 +146,7 @@
     <ClCompile Include="WindowsUtility.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="globals.h" />
     <ClInclude Include="InputBlocker.h" />
     <ClInclude Include="Midifile\Binasc.h" />
     <ClInclude Include="Midifile\MidiEvent.h" />
