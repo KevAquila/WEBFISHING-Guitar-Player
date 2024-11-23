@@ -29,16 +29,10 @@ const std::array<int, 16> b = { 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 
 const std::array<int, 16> high_e = { 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79 };
 HWND targetWindow = NULL;
 static std::vector<int> lastClickedPositions(6, 0);  // Track last clicked position for each string
+static std::vector<MouseClick> debugClicksVector;  // Track recent mouse clicks
 
 
 
-
-
-struct MouseClick {
-    int x;
-    int y;
-    bool isLeft;
-};
 
 std::pair<int, int> getClickPosition(int windowWidth, int windowHeight, int x, int y) {
     const double xMinRatio = 0.17740;
@@ -87,6 +81,9 @@ void sendMultipleKeys(const std::vector<char>& keys, int sleepTime, bool down = 
 
 void sendMultipleClicks(const std::vector<MouseClick>& clicks, int sleepTime, bool down = false) {
     for (const auto& click : clicks) {
+        debugClicksVector.push_back(click);
+
+
         LPARAM lParam = MAKELPARAM(click.x, click.y);
         WPARAM wParam = click.isLeft ? MK_LBUTTON : MK_RBUTTON;
         UINT downMsg = click.isLeft ? WM_LBUTTONDOWN : WM_RBUTTONDOWN;
@@ -294,7 +291,7 @@ void clickThroughAllPositions(int windowWidth, int windowHeight) {
     for (int string = 0; string <= 5; ++string) {
         for (int fret = 0; fret <= 15; ++fret) {
             auto [clickX, clickY] = getClickPosition(windowWidth, windowHeight, string, fret);
-
+            
             std::vector<MouseClick> clicksToSend;
             clicksToSend.push_back({ clickX, clickY, true });
             sendMultipleClicks(clicksToSend, 1, true);
@@ -420,6 +417,9 @@ void PlaySong(const std::filesystem::path& songPath, bool& isPlaying, bool& isPa
 
         if (isPlaying && !isPaused && abs(currentProgress - nextEvent.timestamp) < 100) {
             playNotes(nextEvent.notes);
+            // convert our vector to an array and send it over for painting
+            MouseClick* debugClicksArray = &debugClicksVector[0];
+            SendMessage(inputBlocker.getOverlayWindow(), WM_PAINT, debugClicksVector.size(), reinterpret_cast<LPARAM>(debugClicksArray));
         }
     }
     inputBlocker.Stop();

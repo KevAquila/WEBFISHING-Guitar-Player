@@ -1,6 +1,15 @@
 #include <windows.h>
 #include <thread>
 #include <atomic>
+#include <vector>
+
+BOOLEAN debugCirclesEnabled = FALSE;
+
+struct MouseClick {
+    int x;
+    int y;
+    bool isLeft;
+};
 
 class InputBlocker {
 private:
@@ -13,7 +22,9 @@ private:
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         switch (msg) {
         case WM_PAINT: {
+            MouseClick* clickArray = reinterpret_cast<MouseClick*>(lParam);
             PAINTSTRUCT ps;
+            InvalidateRect(hwnd, NULL, TRUE);
             HDC hdc = BeginPaint(hwnd, &ps);
 
             // Fill with semi-transparent purple
@@ -32,6 +43,17 @@ private:
             const char* text = "Guitar Player is playing.  Input is blocked while playing.";
             TextOutA(hdc, 20, 30, text, (int)strlen(text));
             DeleteObject(hFont);
+
+            // Draw debug circles
+            if (debugCirclesEnabled) {
+                static const int debugCircleRadius = 10;
+                for (int i = 0; i < wParam; i++) {
+                    MouseClick click = clickArray[i];
+                    int x = click.x;
+                    int y = click.y;
+                    Ellipse(hdc, x - debugCircleRadius, y - debugCircleRadius, x + debugCircleRadius, y + debugCircleRadius);
+                }
+            }
 
             EndPaint(hwnd, &ps);
             return 0;
@@ -144,6 +166,11 @@ private:
 
 public:
     InputBlocker() : targetWindow(NULL), overlayWindow(NULL) {}
+
+    HWND getOverlayWindow() {
+        // Used for receiving updates
+        return overlayWindow;
+    }
 
     bool Start(HWND window) {
         if (active) return false;
