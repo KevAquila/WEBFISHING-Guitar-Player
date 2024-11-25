@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -41,12 +41,37 @@ namespace miditotxt
             Console.WriteLine($"Conversion complete. Statistics written to {statsFilePath}");
             Console.Read();
         }
-
         public static void ConvertMidiToText(string midiFilePath, string textFilePath, string statsFilePath)
         {
-            var midiFile = MidiFile.Read(midiFilePath);
-            var tempoMap = midiFile.GetTempoMap();
+            // Configure ReadingSettings to handle invalid events
+            var readingSettings = new ReadingSettings
+            {
+                // Skip events with invalid parameter values
+                InvalidChannelEventParameterValuePolicy = InvalidChannelEventParameterValuePolicy.SnapToLimits
+            };
 
+            MidiFile midiFile;
+
+            try
+            {
+                // Read the MIDI file with the custom settings
+                midiFile = MidiFile.Read(midiFilePath, readingSettings);
+            }
+            catch (Exception ex)
+            {
+                // Log the error to the console or stats file and skip the problematic file
+                Console.WriteLine($"Error reading file {Path.GetFileName(midiFilePath)}: {ex.Message}");
+
+                // Optionally log the error to the stats file
+                using (StreamWriter statsWriter = new StreamWriter(statsFilePath, true))
+                {
+                    statsWriter.WriteLine($"Error reading file {Path.GetFileName(midiFilePath)}: {ex.Message}");
+                    statsWriter.WriteLine(new string('-', 50));
+                }
+                return; // Skip further processing for this file
+            }
+
+            var tempoMap = midiFile.GetTempoMap();
             List<SoundEvent> Song = new List<SoundEvent>();
 
             // Extract notes from MIDI file
@@ -56,9 +81,16 @@ namespace miditotxt
                                     (n.TimeAs<MetricTimeSpan>(tempoMap).Seconds * 1000) +
                                     (n.TimeAs<MetricTimeSpan>(tempoMap).Milliseconds);
 
-                if (Song.Count > 0 && timestampNote <= Song[Song.Count - 1].timestamp + 30)
+                if (Song.Count > 0)
                 {
-                    Song[Song.Count - 1].notes.Add(n.NoteNumber);
+                    if (timestampNote <= Song[Song.Count - 1].timestamp + 30)
+                    {
+                        Song[Song.Count - 1].notes.Add(n.NoteNumber);
+                    }
+                    else
+                    {
+                        Song.Add(new SoundEvent(timestampNote, n.NoteNumber));
+                    }
                 }
                 else
                 {
@@ -73,6 +105,8 @@ namespace miditotxt
             int totalNotes = allNotes.Count;
             int omittedNotes = allNotes.Count(n => n + optimalShift < 40 || n + optimalShift > 79);
 
+            float notesInRangePercentage = (float)(totalNotes - omittedNotes) / totalNotes * 100;
+
             // Ensure the directory exists
             string directory = Path.GetDirectoryName(textFilePath);
             if (!string.IsNullOrEmpty(directory))
@@ -80,8 +114,25 @@ namespace miditotxt
                 Directory.CreateDirectory(directory);
             }
 
-            // Apply shift and write to file
+            // Ensure the Song list is not empty
+            if (Song.Count == 0)
+            {
+                Console.WriteLine($"No valid notes found in {Path.GetFileName(midiFilePath)}. Skipping file.");
+
+                // Optionally log to stats file
+                using (StreamWriter statsWriter = new StreamWriter(statsFilePath, true))
+                {
+                    statsWriter.WriteLine($"File: {Path.GetFileName(midiFilePath)} - No valid notes found. Skipped.");
+                    statsWriter.WriteLine(new string('-', 50));
+                }
+
+                return; // Skip further processing
+            }
+
+            // Safely access the first timestamp
             int offsetNotes = Song[0].timestamp;
+
+            // Apply shift and write to file
             using (StreamWriter writer = new StreamWriter(textFilePath))
             {
                 foreach (var soundEvent in Song)
@@ -114,9 +165,28 @@ namespace miditotxt
                 statsWriter.WriteLine(new string('-', 50));
             }
 
+            // Copy files based on criteria
+            string oneHundredFolder = "OneHundredPercent";
+            string perfectFolder = "Perfect";
+
+            if (notesInRangePercentage == 100.00f)
+            {
+                Directory.CreateDirectory(oneHundredFolder);
+                string destinationFile = Path.Combine(oneHundredFolder, Path.GetFileName(textFilePath));
+                File.Copy(textFilePath, destinationFile, true);
+
+                if (optimalShift == 0 && omittedNotes == 0)
+                {
+                    Directory.CreateDirectory(perfectFolder);
+                    string perfectDestinationFile = Path.Combine(perfectFolder, Path.GetFileName(textFilePath));
+                    File.Copy(textFilePath, perfectDestinationFile, true);
+                }
+            }
+
             // Print a simple progress message to console
             Console.WriteLine($"Converted: {Path.GetFileName(midiFilePath)}");
         }
+
         public class ShiftParameters
         {
             public double NoShiftBonus { get; set; } = 0.11;
@@ -165,6 +235,6 @@ namespace miditotxt
 
             return bestShift;
         }
-       
+
     }
 }
