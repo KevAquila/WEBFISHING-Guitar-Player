@@ -42,11 +42,37 @@ namespace miditotxt
             Console.Read();
         }
 
-        public static void ConvertMidiToText(string midiFilePath, string textFilePath, string statsFilePath)
+                public static void ConvertMidiToText(string midiFilePath, string textFilePath, string statsFilePath)
         {
-            var midiFile = MidiFile.Read(midiFilePath);
-            var tempoMap = midiFile.GetTempoMap();
+            // Configure ReadingSettings to handle invalid events
+            var readingSettings = new ReadingSettings
+            {
+                // Skip events with invalid parameter values
+                InvalidChannelEventParameterValuePolicy = InvalidChannelEventParameterValuePolicy.SnapToLimits
+            };
 
+            MidiFile midiFile;
+
+            try
+            {
+                // Read the MIDI file with the custom settings
+                midiFile = MidiFile.Read(midiFilePath, readingSettings);
+            }
+            catch (Exception ex)
+            {
+                // Log the error to the console or stats file and skip the problematic file
+                Console.WriteLine($"Error reading file {Path.GetFileName(midiFilePath)}: {ex.Message}");
+
+                // Optionally log the error to the stats file
+                using (StreamWriter statsWriter = new StreamWriter(statsFilePath, true))
+                {
+                    statsWriter.WriteLine($"Error reading file {Path.GetFileName(midiFilePath)}: {ex.Message}");
+                    statsWriter.WriteLine(new string('-', 50));
+                }
+                return; // Skip further processing for this file
+            }
+
+            var tempoMap = midiFile.GetTempoMap();
             List<SoundEvent> Song = new List<SoundEvent>();
 
             // Extract notes from MIDI file
