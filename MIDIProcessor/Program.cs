@@ -105,6 +105,8 @@ namespace miditotxt
             int totalNotes = allNotes.Count;
             int omittedNotes = allNotes.Count(n => n + optimalShift < 40 || n + optimalShift > 79);
 
+            float notesInRangePercentage = (float)(totalNotes - omittedNotes) / totalNotes * 100;
+
             // Ensure the directory exists
             string directory = Path.GetDirectoryName(textFilePath);
             if (!string.IsNullOrEmpty(directory))
@@ -163,6 +165,24 @@ namespace miditotxt
                 statsWriter.WriteLine(new string('-', 50));
             }
 
+            // Copy files based on criteria
+            string oneHundredFolder = "OneHundredPercent";
+            string perfectFolder = "Perfect";
+
+            if (notesInRangePercentage == 100.00f)
+            {
+                Directory.CreateDirectory(oneHundredFolder);
+                string destinationFile = Path.Combine(oneHundredFolder, Path.GetFileName(textFilePath));
+                File.Copy(textFilePath, destinationFile, true);
+
+                if (optimalShift == 0 && omittedNotes == 0)
+                {
+                    Directory.CreateDirectory(perfectFolder);
+                    string perfectDestinationFile = Path.Combine(perfectFolder, Path.GetFileName(textFilePath));
+                    File.Copy(textFilePath, perfectDestinationFile, true);
+                }
+            }
+
             // Print a simple progress message to console
             Console.WriteLine($"Converted: {Path.GetFileName(midiFilePath)}");
         }
@@ -215,6 +235,6 @@ namespace miditotxt
 
             return bestShift;
         }
-       
+
     }
 }
