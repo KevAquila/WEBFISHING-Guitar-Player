@@ -29,6 +29,7 @@ const std::array<int, 16> b = { 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 
 const std::array<int, 16> high_e = { 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79 };
 HWND targetWindow = NULL;
 static std::vector<int> lastClickedPositions(6, 0);  // Track last clicked position for each string
+extern bool isLooping = false;
 
 
 
@@ -346,6 +347,7 @@ void PlaySong(const std::filesystem::path& songPath, bool& isPlaying, bool& isPa
     auto lastUpdateTime = std::chrono::high_resolution_clock::now();
     InputBlocker inputBlocker;
     inputBlocker.Start(targetWindow);
+
     while (isPlaying) {
         // Handle pausing
         if (isPaused) {
@@ -383,8 +385,17 @@ void PlaySong(const std::filesystem::path& songPath, bool& isPlaying, bool& isPa
         }
 
         if (nextIndex >= songData.size()) {
-            isPlaying = false;
-            break;
+            if (isLooping) {
+                // Restart playback from the beginning
+                accumulatedTime = 0;
+                currentProgress = 0;
+                lastUpdateTime = std::chrono::high_resolution_clock::now();
+                continue;
+            }
+            else {
+                isPlaying = false;
+                break;
+            }
         }
 
         const auto& nextEvent = songData[nextIndex];
@@ -422,6 +433,7 @@ void PlaySong(const std::filesystem::path& songPath, bool& isPlaying, bool& isPa
             playNotes(nextEvent.notes);
         }
     }
+
     inputBlocker.Stop();
     isPlaying = false;
 }

@@ -439,7 +439,9 @@ public:
         playButton = new DarkButton(playbackPanel, wxID_ANY, "Play");
         pauseButton = new DarkButton(playbackPanel, wxID_ANY, "Pause");
         stopButton = new DarkButton(playbackPanel, wxID_ANY, "Stop");
+        loopCheckbox = new wxCheckBox(playbackPanel, wxID_ANY, "Loop");
 
+        buttonSizer->Add(loopCheckbox, 1, wxLEFT | wxRIGHT, 5);
         buttonSizer->Add(playButton, 1, wxRIGHT, 5);
         buttonSizer->Add(pauseButton, 1, wxLEFT | wxRIGHT, 5);
         buttonSizer->Add(stopButton, 1, wxLEFT, 5);
@@ -465,6 +467,9 @@ public:
         playButton->Bind(wxEVT_BUTTON, &MainFrame::OnPlay, this);
         pauseButton->Bind(wxEVT_BUTTON, &MainFrame::OnPause, this);
         stopButton->Bind(wxEVT_BUTTON, &MainFrame::OnStop, this);
+        loopCheckbox->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent& event) {
+            isLooping = loopCheckbox->GetValue();
+            });
         listBox->Bind(wxEVT_LISTBOX, &MainFrame::OnSongSelect, this);
         progressBar->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &MainFrame::OnSeek, this);
         refreshButton->Bind(wxEVT_BUTTON, &MainFrame::OnRefresh, this);
@@ -753,6 +758,7 @@ private:
         playButton->Enable(!isPlayingSong || isPaused);
         pauseButton->Enable(isPlayingSong && !isPaused);
         stopButton->Enable(isPlayingSong || isPaused);
+        loopCheckbox->SetValue(isLooping); // Sync checkbox state with current loop status
 
         // Update button colors based on current state
         wxColour activeColor(147, 112, 219);    // Purple highlight color
@@ -791,6 +797,7 @@ private:
     DarkButton* playButton;
     DarkButton* pauseButton;
     DarkButton* stopButton;
+    wxCheckBox* loopCheckbox;
     DarkButton* refreshButton;
     CustomProgressBar* progressBar;
     wxStaticText* timeLabel;
