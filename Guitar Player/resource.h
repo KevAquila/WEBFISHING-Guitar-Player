@@ -3,6 +3,7 @@
 // Used by Guitar Player.rc
 //
 #define IDI_ICON1                       101
+#define IDC_LOOP 104  // Unique identifier
 
 // Next default values for new objects
 // 
